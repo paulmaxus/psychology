@@ -1,18 +1,17 @@
 import pandas as pd
 import requests
 import json
-import config
 
 
 base_url_works = 'https://api.openalex.org/works'
 
 
-def get_works(works_filter, cursor='*'):
+def get_works(works_filter, cursor='*', email=''):
     # works_filter: e.g.
     # f'authorships.institutions.ror:{ror},publication_year:{year}'
     params = {
         'per-page': 100,
-        'mailto': config.email,
+        'mailto': email,
         'filter': works_filter,
         'cursor': cursor
     }
