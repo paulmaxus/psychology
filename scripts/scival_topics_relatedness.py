@@ -14,14 +14,20 @@
 #     name: python3
 # ---
 
-# %%
-import requests
-import json
-import pandas as pd
-import config
+# %% [markdown]
+# Obtain relatedness scores for Scival topics
 
 # %%
-pubs = pd.read_csv(f'{config.project_path}/tables/topics_publications.csv')
+import pandas as pd
+import requests
+import json
+
+# %%
+with open('../config.json', 'r') as f:
+    config = json.loads(f.read())
+
+# %%
+pubs = pd.read_csv(f'{config["project_path"]}/tables/topics_publications.csv')
 
 # %%
 topics = pubs.drop_duplicates('Topic number')[['Topic number', 'Topic name',
@@ -41,8 +47,8 @@ base_url = 'https://api.elsevier.com/analytics/scival/topic/metrics'
 for topic_id in topics['Topic number']:
     params = {'topicIds': topic_id,
               'metricTypes': 'relatedTopics',
-              'insttoken': config.elsevier_instkey,
-              'apiKey': config.elsevier_apikey}
+              'insttoken': config["elsevier_instkey"],
+              'apiKey': config["elsevier_apikey"]}
     headers = {'Accept': 'application/json'}
     result = requests.get(base_url, params=params, headers=headers)
     if result.status_code == 200:
@@ -50,7 +56,7 @@ for topic_id in topics['Topic number']:
 
 # %%
 # temp storage
-with open('data/relations.json', 'w') as f:
+with open('../data/relations.json', 'w') as f:
     f.write(json.dumps(relations))
 
 # %%
@@ -80,4 +86,4 @@ for topic_id in topics['Topic number']:
 df = pd.DataFrame(relatedness)
 
 # %%
-df.to_csv(f'{config.project_path}/relations.csv', index=False)
+df.to_csv(f'{config["project_path"]}/relations.csv', index=False)

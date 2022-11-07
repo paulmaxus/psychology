@@ -1,4 +1,4 @@
 /data/
-/config.py
-/notebooks/.ipynb_checkpoints/
+/config.json
+/notebooks/
 /venv/

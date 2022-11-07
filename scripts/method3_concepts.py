@@ -15,15 +15,23 @@
 # ---
 
 # %%
+import sys
+sys.path.append('..')  # this way, we can import from utils
+
+# %%
 import pandas as pd
-from scripts.openalex_works import get_works
-import config
+import json
+from utils.openalex_works import get_works
 
 # %%
-output_path = f'{config.project_path}/tables/oalex_'
+with open('../config.json', 'r') as f:
+    config = json.loads(f.read())
 
 # %%
-affiliations = pd.read_csv(f'{config.project_path}/affiliations.csv', dtype=object).applymap(lambda x: x.strip())
+output_path = f'{config["project_path"]}/tables/oalex_'
+
+# %%
+affiliations = pd.read_csv(f'{config["project_path"]}/affiliations.csv', dtype=object).applymap(lambda x: x.strip())
 # strip: making sure no whitespaces are left
 
 # %% [markdown]
@@ -107,7 +115,7 @@ pubs_concepts_table = pd.concat([pubs_concepts_table,
                                 axis=1).drop(columns='concepts')
 
 # %%
-concepts_hierarchy = pd.read_csv('../openalex_concepts_hierarchy.csv')
+concepts_hierarchy = pd.read_csv(f'{config["project_path"]}/openalex_concepts_hierarchy.csv')
 # concept ids are lowercase, parent ids not
 concepts_hierarchy['parent_ids'] = concepts_hierarchy['parent_ids'].str.lower()
 
@@ -151,7 +159,7 @@ hierarchy.to_csv(f'{output_path}concepts_hierarchy.csv', index=False)
 # collaborations
 
 # %%
-from scripts.collaborations import collaborations
+from utils.collaborations import collaborations
 
 # %%
 c_data = pubs_affs_table.merge(pubs_concepts_table1, how='left', on='id').\

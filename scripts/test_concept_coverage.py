@@ -14,9 +14,12 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# How many publications have at least one level x concept?
+
 # %%
-# %cd ..  
-# this way, we can import from utils
+import sys
+sys.path.append('..')  # this way, we can import from utils
 
 # %%
 import pandas as pd
@@ -24,11 +27,11 @@ import json
 from utils.openalex_works import get_works
 
 # %%
-with open('config.json', 'r') as f:
+with open('../config.json', 'r') as f:
     config = json.loads(f.read())
 
 # %%
-institutes = pd.read_csv('affiliations.csv')
+institutes = pd.read_csv(f'{config["project_path"]}/affiliations.csv')
 ror = institutes[institutes.university=='VU']['ror'].iloc[0]
 
 # %%
@@ -36,12 +39,8 @@ works_filter = f'authorships.institutions.ror:{ror},publication_year:2021'
 works = get_works(works_filter, '*', config['email'])
 
 # %%
-has_level1 = list(map(lambda x: any(list(map(lambda y: y['level']==1, x['concepts']))), works))
-
-# %%
-has_level1[:10]
-
-# %%
-sum(has_level1)/len(has_level1)
+for l in range(6):
+    has_level = list(map(lambda x: any(list(map(lambda y: y['level']==l, x['concepts']))), works))
+    print(round(sum(has_level)/len(has_level)*100,1), '% of publications have level', l, 'concept')
 
 # %%

@@ -14,80 +14,62 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# Assigning themes to Pure publications:
+# - themes are based partly on concepts (see themes_concepts.csv) and concept patterns
+# - some constraints are specified, e.g. concept level
+
 # %%
 import pandas as pd
-
-# %%
-h = pd.read_csv('../openalex_concepts_hierarchy.csv')
-
-# %% [markdown]
-# Themes
-# 1. Veerkracht bij jeugd
-# 2. Psychische aandoeningen
-# 3. De menselijke factor in nieuwe technologieën
-# 4. Maatschappelijke transitie en gedragsverandering
-# 5. Maatschappelijke ongelijkheid en diversiteit
-
-# %%
-# included concepts per theme
-i1 = ['developmental psychology', 'young adult', 'positive youth development', 'child and adolescent psychiatry',
-      'child behavior checklist', 'early childhood', 'child development', 'child health', 'child protection', 
-      'early childhood education', 'child rearing', 'academic achievement', 'pediatrics']
-
-i2 = ['clinical psychology', 'psychiatry']
-
-i3 = ['nanotechnology', 'genetic enhancement', 'social media', 'mobile technology', 'wearable technology', 'virtual reality', 'cryptocurrency']
-
-i5 = ['cultural diversity', 'religious diversity', 'inequality', 'social equality', 'underrepresented minority', 'social exclusion', 'refugee', 'transgender', 'homosexuality', 
-      'racial diversity', 'gender diversity', 'ethnically diverse', 'economic inequality', 'educational inequality', 'gender inequality', 'social inequality', 'wage inequality', 
-      'sexual minority', 'minority rights', 'minority group', 'ethnic group']
-
-# %%
-for concepts in [i1, i2, i3, i5]:
-    # check that the included concepts are existing concepts
-    for c in concepts:
-        if c not in h['normalized_name'].values:
-            print(c, 'is not a concept')
-
-
-# %%
-def is_one(concepts: list[tuple[str, int]]) -> bool:
-    # concepts: (name, level)
-    # concepts are all concepts assigned to a given work
-    include_pattern = ['child', 'adoles', 'young', 'youth']
-    return any([c[0] in i1 for c in concepts]) or any([p in c for p in include_pattern for c in concepts if c[1]>1])
-
-
-# %%
-def is_two(concepts: list[tuple[str, int]]) -> bool:
-    # concepts: (name, level)
-    # concepts are all concepts assigned to a given work
-    return any([c[0] in i2 for c in concepts])
-
-
-# %%
-def is_three(concepts: list[tuple[str, int]]) -> bool:
-    # concepts: (name, level)
-    # concepts are all concepts assigned to a given work
-    return any([c[0] in i3 for c in concepts]) or any(['robot' in c for c in concepts if c[1]==3])
-
-
-# %%
-def is_four(concepts: list[tuple[str, int]]) -> bool:
-    # concepts: (name, level)
-    # concepts are all concepts assigned to a given work
-    return any(['behav' in c[0] for c in concepts])
-
-
-# %%
-def is_five(concepts: list[tuple[str, int]]) -> bool:
-    # concepts: (name, level)
-    # concepts are all concepts assigned to a given work
-    return any([c[0] in i5 for c in concepts]) or any(['intercultural' in c for c in concepts if c[1]==3])
-
-
-# %%
 import json
+
+# %%
+with open('../config.json', 'r') as f:
+    config = json.loads(f.read())
+
+# %%
+h = pd.read_csv(f'{config["project_path"]}/openalex_concepts_hierarchy.csv')
+h['display_name'] = h.display_name.str.lower()
+
+# %%
+# load theme-concept mapping
+themes_concepts = pd.read_csv('../themes_concepts.csv').to_dict('list')
+for theme in themes_concepts:
+    themes_concepts[theme] = [i for i in themes_concepts[theme] if not pd.isna(i)]
+# check that the included concepts are existing concepts
+for theme in themes_concepts:
+    for c in themes_concepts[theme]:
+            if c not in h['display_name'].values:
+                print(c, 'is not a concept')
+
+
+# %%
+def is_theme1(concepts: list[tuple[str, int]]) -> bool:
+    include_pattern = ['child', 'adoles', 'young', 'youth']
+    return any([c[0] in themes_concepts['theme1'] for c in concepts]) or any([p in c[0] for p in include_pattern for c in concepts if c[1]>1])
+
+
+# %%
+def is_theme2(concepts: list[tuple[str, int]]) -> bool:
+    return any([c[0] in themes_concepts['theme2'] for c in concepts])
+
+
+# %%
+def is_theme3(concepts: list[tuple[str, int]]) -> bool:
+    return any([c[0] in themes_concepts['theme3'] for c in concepts]) or any(['robot' in c[0] for c in concepts if c[1]==3])
+
+
+# %%
+def is_theme4(concepts: list[tuple[str, int]]) -> bool:
+    return any([c[0] in themes_concepts['theme4'] for c in concepts]) or any(['behav' in c[0] for c in concepts])
+
+
+# %%
+def is_theme5(concepts: list[tuple[str, int]]) -> bool:
+    return any([c[0] in themes_concepts['theme5'] for c in concepts]) or any(['intercultural' in c[0] for c in concepts if c[1]==3])
+
+
+# %%
 with open('../data/pure_concepts.json', 'r') as f:
     pubs = json.loads(f.read())
 
@@ -95,15 +77,28 @@ with open('../data/pure_concepts.json', 'r') as f:
 pubs_themes = []
 for pub in pubs:
     concepts = [(c['display_name'].lower(), c['level']) for c in pub['concepts']]
-    record = {'title': pub['title']}
-    record['theme1'] = is_one(concepts)
-    record['theme2'] = is_two(concepts)
-    record['theme3'] = is_three(concepts)
-    record['theme4'] = is_four(concepts)
-    record['theme5'] = is_five(concepts)
+    record = {'title': pub['title'], 'year': pub['year'], 'concepts': concepts}
+    record['theme1'] = is_theme1(concepts)
+    record['theme2'] = is_theme2(concepts)
+    record['theme3'] = is_theme3(concepts)
+    record['theme4'] = is_theme4(concepts)
+    record['theme5'] = is_theme5(concepts)
     pubs_themes.append(record)
 
 # %%
-pd.DataFrame(pubs_themes).to_csv('../data/pure_themes.csv', index=False)
+pd.DataFrame(pubs_themes).drop(columns='concepts').to_csv('../data/pure_themes.csv', index=False)
+
+# %%
+# what are the concepts of publications without theme?
+df = pd.DataFrame(pubs_themes)
+df = df[~df.loc[:,'theme1':'theme5'].any(axis=1)]
+df = df[['title', 'year', 'concepts']]
+df.to_csv('../data/pure_themes_rest.csv', index=False)
+
+# %%
+# this set should overlap with a previous set (pubs without psychology concepts)
+rest = pd.read_csv('../data/pure_concepts_rest.csv')
+print('rest has', len(rest))
+print('overlap has', len(rest.merge(df, on='title', how='inner')))
 
 # %%

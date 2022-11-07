@@ -17,6 +17,11 @@
 # %%
 import pandas as pd
 import requests
+import json
+
+# %%
+with open('../config.json', 'r') as f:
+    config = json.loads(f.read())
 
 # %%
 pure = pd.read_excel('../data/pure_psychology_2017-2022.xls')
@@ -42,7 +47,7 @@ base_url_works = 'https://api.openalex.org/works'
 def get_works(params_ext):
     params = {
         'per-page': 100,
-        'mailto': email
+        'mailto': config['email']
     }
     params.update(params_ext)
     r = requests.get(base_url_works, params)
@@ -84,10 +89,12 @@ def agg_concepts(concepts):
 data = []
 works = []
 for pub in results:
-    data.append({'title': pub['title'], 
+    data.append({'title': pub['title'],
+                 'year': pub['publication_year'],
                  'concepts': agg_concepts(pub['concepts'])})
-    works.append({'title': pub['title'], 
-                 'concepts': pub['concepts']})
+    works.append({'title': pub['title'],
+                  'year': pub['publication_year'],
+                  'concepts': pub['concepts']})
 
 # %%
 df = pd.DataFrame(data)
@@ -105,7 +112,7 @@ with open('../data/pure_concepts.json', 'w') as f:
 # how many have keyword 'psychology' in either level0 or level1 concept?
 
 # %%
-concepts_hierarchy = pd.read_csv('../openalex_concepts_hierarchy.csv')
+concepts_hierarchy = pd.read_csv('../data/openalex_concepts_hierarchy.csv')
 # concept ids are lowercase, parent ids not
 concepts_hierarchy['parent_ids'] = concepts_hierarchy['parent_ids'].str.lower()
 
