@@ -86,7 +86,14 @@ for pub in pubs:
     pubs_themes.append(record)
 
 # %%
-pd.DataFrame(pubs_themes).drop(columns='concepts').to_csv('../data/pure_themes.csv', index=False)
+pd.DataFrame(pubs_themes).drop(columns='concepts').to_csv(f'{config["project_path"]}/tables/pure_themes.csv', index=False)
+
+# %%
+# long format
+df_long = pd.DataFrame(pubs_themes).drop(columns='concepts').melt(id_vars=['title', 'year'], var_name='theme',
+                                                                  value_vars=['theme1', 'theme2', 'theme3', 'theme4', 'theme5'])
+df_long = df_long[df_long.value==True]
+df_long.drop(columns='value').to_csv(f'{config["project_path"]}/tables/pure_themes_long.csv', index=False)
 
 # %%
 # what are the concepts of publications without theme?
