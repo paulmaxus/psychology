@@ -45,8 +45,7 @@ for theme in themes_concepts:
 
 # %%
 def is_theme1(concepts: list[tuple[str, int]]) -> bool:
-    include_pattern = ['child', 'adoles', 'young', 'youth']
-    return any([c[0] in themes_concepts['theme1'] for c in concepts]) or any([p in c[0] for p in include_pattern for c in concepts if c[1]>1])
+    return any([c[0] in themes_concepts['theme1'] for c in concepts])
 
 
 # %%
@@ -101,6 +100,9 @@ df = pd.DataFrame(pubs_themes)
 df = df[~df.loc[:,'theme1':'theme5'].any(axis=1)]
 df = df[['title', 'year', 'concepts']]
 df.to_csv('../data/pure_themes_rest.csv', index=False)
+
+# %%
+len(df)
 
 # %%
 # this set should overlap with a previous set (pubs without psychology concepts)

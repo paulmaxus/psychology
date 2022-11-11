@@ -112,7 +112,7 @@ with open('../data/pure_concepts.json', 'w') as f:
 # how many have keyword 'psychology' in either level0 or level1 concept?
 
 # %%
-concepts_hierarchy = pd.read_csv('../data/openalex_concepts_hierarchy.csv')
+concepts_hierarchy = pd.read_csv(f'{config["project_path"]}/openalex_concepts_hierarchy.csv')
 # concept ids are lowercase, parent ids not
 concepts_hierarchy['parent_ids'] = concepts_hierarchy['parent_ids'].str.lower()
 
@@ -139,8 +139,44 @@ mask = df.apply(axis=1,
 len(df[~mask])/len(df)
 
 # %%
-df[~mask].to_csv('../data/pure_concepts_rest.csv', index=False)
+len(df)
 
 # %%
+df[~mask].to_csv('../data/pure_concepts_rest.csv', index=False)
+
+# %% [markdown]
+# is this coverage comparable when we tag ourselves?
+
+# %%
+tagged_data = pd.read_csv('../data/concept_tagger_output.csv')
+# for comparison, let's focus on the one we also find in openalex
+#tagged_data = tagged_data[tagged_data['1 Title of the contribution in original language'].isin(df.title)]
+
+# %%
+len(tagged_data)
+
+# %%
+concepts_psychology_normalized = concepts_hierarchy[concepts_hierarchy.parent_ids.str.find(psychology_id) > -1]
+concepts_psychology_normalized = list(concepts_psychology_normalized['normalized_name'].values)
+concepts_psychology_normalized.append('psychology')
+
+
+# %%
+def has_psychology_normalized(concepts):
+    return any([c in concepts_psychology_normalized for c in concepts])
+
+
+# %%
+import ast  # for list literals
+
+# %%
+mask = tagged_data.apply(axis=1, 
+         func=lambda x: has_psychology_normalized(ast.literal_eval(x['tags'])))
+
+# %%
+len(tagged_data[~mask])/len(tagged_data)
+
+# %%
+tagged_data[~mask].tags
 
 # %%
