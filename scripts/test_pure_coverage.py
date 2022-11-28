@@ -30,7 +30,11 @@ pure = pd.read_excel('../data/pure_psychology_2017-2022.xls')
 dois = pure['10.1 Electronic version(s) of this work > DOI (Digital Object Identifier)[1]']
 
 # %%
+# doi preprocessing
 dois = dois.dropna().apply(lambda x: x.replace('https://doi.org/', '').lower().strip())
+# instances have been spotted where the doi is prefixed with the string "doi:"
+# this works as a link, but openalex recognises it as the doi filter parameter
+dois = dois.apply(lambda x: x.replace('doi:', ''))
 
 # %%
 print(len(dois), len(dois.unique()))
@@ -39,7 +43,19 @@ print(len(dois), len(dois.unique()))
 dois = dois.unique()
 
 # %% [markdown]
-# search for those in openalex and extract concepts (copy from another project)
+# ## Scival coverage (manual)
+
+# %%
+pd.DataFrame(dois).to_csv('../data/dois.csv')
+
+# %%
+n_scival = 2781 - 103
+print(n_scival)
+
+# %% [markdown]
+# ## OpenAlex coverage
+#
+# search for those in openalex and extract concepts
 
 # %%
 base_url_works = 'https://api.openalex.org/works'
@@ -71,6 +87,9 @@ for dois_sub in [dois[i:i+n] for i in range(0, len(dois), n)]:
     results = results + get_works(params)
 
 print(len(results), 'of', len(dois), 'found')
+
+# %%
+print('scival:', n_scival, 'openalex:', len(results), 'ratio:', round(n_scival/len(results), 2))
 
 
 # %%
