@@ -40,7 +40,7 @@ with open('../data/publications.json', 'r') as f:
 # %%
 # load concept hierarchy
 # note: concept ids are lowercase, parent ids not
-concepts_hierarchy = pd.read_csv('../openalex_concepts_hierarchy.csv')
+concepts_hierarchy = pd.read_csv(f'{config["project_path"]}/openalex_concepts_hierarchy.csv')
 concepts_hierarchy['parent_ids'] = concepts_hierarchy['parent_ids'].str.lower()
 
 # %%
@@ -62,15 +62,19 @@ publications = publications.drop(columns='concepts')
 
 # %%
 # only level 2 concepts with grandparent psychology
-publications_2 = publications.copy()[publications['concept.level']==2]
+# add parents for vosviwer map file
+publications_2 = publications.copy()[publications['concept.level'].isin([1,2])]
 publications_2['concept.id'] = publications_2['concept.id'].str.lower()
-publications_2 = publications_2[publications_2['concept.id'].isin(psy_grandchildren.openalex_id)]
+publications_2 = publications_2[
+    publications_2['concept.id'].isin(psy_grandchildren.openalex_id) |
+    publications_2['concept.id'].isin(psy_children.openalex_id)
+]
 
 # %%
 # count how often each concept appears in the publication set
 # then filter using a cutoff (~50 nodes?)
 counts = publications_2.value_counts('concept.id')
-n_nodes = 50
+n_nodes = len(counts) #50
 print(len(counts), 'concepts in total')
 print(n_nodes, 'are', round((n_nodes/len(counts))*100), '% of total')
 
@@ -86,8 +90,8 @@ publications_2_subset = publications_2.copy()[publications_2['concept.id'].isin(
 
 # %%
 # counts per university
-# NOTE: works are now counted more than once if they are shared amongst universities
-works_count = publications_2_subset.groupby(['university', 'concept.id']).agg(count=('id', 'count'))
+# display_names should also be unique but use "first" just to be sure
+works_count = publications_2_subset.groupby(['university', 'concept.id']).agg(label=('concept.display_name', 'first'), count=('id', 'count'))
 
 # %%
 works_count.to_csv('../data/works_count.csv')
@@ -154,7 +158,8 @@ aux = pd.DataFrame({'id': parents_relations.openalex_id,
                     'display_name': parents_relations.display_name,
                     'rel_id': parents_relations.parent_ids,
                     'rel_display_name': parents_relations.parent_display_names,
-                    'rel_level': 1})
+                    'rel_level': 1,
+                    'rel_score': concepts_2_relations.rel_score.mean()})
 
 # %%
 concepts_2_relations = pd.concat([concepts_2_relations, aux[aux.id.isin(concepts_2_relations.id)]])
