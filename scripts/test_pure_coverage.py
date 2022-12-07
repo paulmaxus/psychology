@@ -14,9 +14,13 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# - compare pure (doi) coverage in scival and openalex
+# - investigate research output types (books etc.)
+# - how much output is psychology-related?
+
 # %%
 import pandas as pd
-import requests
 import json
 
 # %%
@@ -24,108 +28,81 @@ with open('../config.json', 'r') as f:
     config = json.loads(f.read())
 
 # %%
-pure = pd.read_excel('../data/pure_psychology_2017-2022.xls')
+institute_doi = pd.read_csv(config['project_path'] + '/tables/institute_has_doi.csv')
 
 # %%
-dois = pure['10.1 Electronic version(s) of this work > DOI (Digital Object Identifier)[1]']
+# openalex data
+with open('../data/raw/works.json', 'r') as f:
+    oa_data = json.loads(f.read())
+oa_data = pd.DataFrame(oa_data)[['id', 'doi', 'title', 'type', 'concepts']]
+oa_data['doi'] = oa_data['doi'].apply(lambda x: x.replace('https://doi.org/', '').lower().strip())
 
 # %%
-# doi preprocessing
-dois = dois.dropna().apply(lambda x: x.replace('https://doi.org/', '').lower().strip())
-# instances have been spotted where the doi is prefixed with the string "doi:"
-# this works as a link, but openalex recognises it as the doi filter parameter
-dois = dois.apply(lambda x: x.replace('doi:', ''))
+oa_data[oa_data.duplicated('doi', keep=False)]
 
 # %%
-print(len(dois), len(dois.unique()))
+oa_data = oa_data.drop_duplicates('doi', keep='first')
 
 # %%
-dois = dois.unique()
+# scival data
+sv_data = pd.read_csv('../data/pure_outputs/scival.csv', na_values='-')[['EID', 'DOI']]
+
+# %%
+sv_data = sv_data.rename({'DOI': 'doi'}, axis=1)
+
+# %%
+sv_data['doi'] = sv_data['doi'].apply(lambda x: x.lower().strip())
+
+# %%
+sv_data[sv_data.duplicated('doi', keep=False)]
+
+# %%
+# join
+data = institute_doi.merge(oa_data, on='doi', how='left')
+data = data.merge(sv_data, on='doi', how='left')
+
+# %%
+for i in data.institute.unique():
+    print('---')
+    print(i)
+    n_pr = len(data[data.institute==i]['doi'].dropna().unique())
+    n_oa = len(data[data.institute==i]['id'].dropna().unique())
+    n_sv = len(data[data.institute==i]['EID'].dropna().unique())
+    print('unique dois in', 'pure:',  n_pr, '/ openalex:', n_oa, '/ scival:', n_sv)
+    print('coverage in openalex:', round(n_oa/n_pr, 3))
+    print('coverage in scival:', round(n_sv/n_pr, 3))
+
+# %%
+# what are the publication types?
+data.type.value_counts()
+
+# %%
+# what is posted-content?
+data[data.type=='posted-content'].head()
+# archive data, preprints
 
 # %% [markdown]
-# ## Scival coverage (manual)
-
-# %%
-pd.DataFrame(dois).to_csv('../data/dois.csv')
-
-# %%
-n_scival = 2781 - 103
-print(n_scival)
-
-# %% [markdown]
-# ## OpenAlex coverage
-#
-# search for those in openalex and extract concepts
-
-# %%
-base_url_works = 'https://api.openalex.org/works'
-
-def get_works(params_ext):
-    params = {
-        'per-page': 100,
-        'mailto': config['email']
-    }
-    params.update(params_ext)
-    r = requests.get(base_url_works, params)
-    results = []
-    if r.status_code == 200:
-        data = r.json()
-        if 'results' in data:
-            results = data['results']
-    else:
-        print('error:', r.status_code, 'url:', r.url)
-    return results
-
-
-# %%
-results = []
-# maximum amount of options per filter is 50
-n = 50
-for dois_sub in [dois[i:i+n] for i in range(0, len(dois), n)]:
-    dois_filter = f"doi:{'|'.join(dois_sub)}"
-    params = {'filter': dois_filter}
-    results = results + get_works(params)
-
-print(len(results), 'of', len(dois), 'found')
-
-# %%
-print('scival:', n_scival, 'openalex:', len(results), 'ratio:', round(n_scival/len(results), 2))
-
+# Testing concepts
 
 # %%
 def agg_concepts(concepts):
     agg = {}
-    for c in concepts:
-        label = 'level' + str(c['level'])
-        if label in agg:
-            agg[label].append(c['display_name'])
-        else:
-            agg[label] = [c['display_name']]
+    if type(concepts)==list:
+        for c in concepts:
+            label = 'level' + str(c['level'])
+            if label in agg:
+                agg[label].append(c['display_name'])
+            else:
+                agg[label] = [c['display_name']]
     return agg
 
 
 # %%
-data = []
-works = []
-for pub in results:
-    data.append({'title': pub['title'],
-                 'year': pub['publication_year'],
-                 'concepts': agg_concepts(pub['concepts'])})
-    works.append({'title': pub['title'],
-                  'year': pub['publication_year'],
-                  'concepts': pub['concepts']})
+data_c = data.copy()[~pd.isna(data.concepts)]
 
 # %%
-df = pd.DataFrame(data)
-df = pd.concat([df.drop('concepts', axis=1), pd.json_normalize(df.concepts).sort_index(axis=1)], axis=1)
-
-# %%
-df.to_csv('../data/pure_concepts.csv', index=False)
-
-# %%
-import json
-with open('../data/pure_concepts.json', 'w') as f:
-    f.write(json.dumps(works))
+data_c = pd.concat([data.drop('concepts', axis=1), 
+                    pd.json_normalize(data.concepts.apply(agg_concepts)).sort_index(axis=1)], axis=1)
 
 # %% [markdown]
 # how many have keyword 'psychology' in either level0 or level1 concept?
@@ -151,17 +128,10 @@ def has_psychology(concepts):
 
 
 # %%
-mask = df.apply(axis=1, 
-         func=lambda x: has_psychology(x['level0']) or has_psychology(x['level1']))
+mask = data_c.apply(axis=1, func=lambda x: has_psychology(x['level0']) or has_psychology(x['level1']))
 
 # %%
-len(df[~mask])/len(df)
-
-# %%
-len(df)
-
-# %%
-df[~mask].to_csv('../data/pure_concepts_rest.csv', index=False)
+len(data_c[mask])/len(data_c)
 
 # %% [markdown]
 # is this coverage comparable when we tag ourselves?
