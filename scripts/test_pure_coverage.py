@@ -44,8 +44,16 @@ oa_data[oa_data.duplicated('doi', keep=False)]
 oa_data = oa_data.drop_duplicates('doi', keep='first')
 
 # %%
-# scival data
-sv_data = pd.read_csv('../data/pure_outputs/scival.csv', na_values='-')[['EID', 'DOI']]
+# scival data, combine batches
+import glob
+
+sv_data = pd.DataFrame()
+for filename in glob.glob('../data/pure_outputs/scival/*.csv'):
+     sv_data = pd.concat([sv_data,
+                          pd.read_csv(filename, na_values='-')[['EID', 'DOI']]])
+
+# %%
+sv_data[sv_data.duplicated()]
 
 # %%
 sv_data = sv_data.rename({'DOI': 'doi'}, axis=1)
@@ -78,7 +86,7 @@ data.type.value_counts()
 
 # %%
 # what is posted-content?
-data[data.type=='posted-content'].head()
+list('https://doi.org/' + data[data.type=='posted-content']['doi'])
 # archive data, preprints
 
 # %% [markdown]

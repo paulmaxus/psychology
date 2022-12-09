@@ -31,6 +31,7 @@ with open('../config.json', 'r') as f:
 
 # %%
 pure = pd.read_csv('../data/pure_outputs/research_output.csv')
+# some have NULL as NA, but those are recognised by default (na_values)
 
 # %%
 pure = pure.melt(var_name='institute', value_name='doi')
@@ -60,9 +61,12 @@ pure.to_csv(config['project_path'] + '/tables/institute_has_doi.csv', index=Fals
 
 # %% [markdown]
 # ## Scival data (manual)
+# * do this in batches of 5000, those can be computed right away
 
 # %%
-pd.DataFrame(dois).to_csv('../data/pure_outputs/dois.csv')
+for i in range(0, len(dois), 5000):
+    pd.DataFrame(dois[i:i+5000]).\
+        to_csv(f'../data/pure_outputs/dois/batch{i}.csv', index=False, header=False)
 
 # %% [markdown]
 # ## OpenAlex
@@ -88,11 +92,28 @@ def get_works(params_ext):
 
 
 # %%
-results = []
 # maximum amount of options per filter is 50
 # URL length limit would otherwise be enforced anyways
+dois_batches = [[]]
+dois_batches_aux = []
+cur_idx = 0
+for doi in dois:
+    # : causes errors in API, add those to individual requests
+    if ':' in doi:
+        dois_batches_aux.append([doi])
+    else:
+        if len (dois_batches[cur_idx]) < 50:
+            dois_batches[cur_idx].append(doi)
+        else:
+            dois_batches.append([doi])
+            cur_idx += 1
+dois_batches.extend(dois_batches_aux)
+
+# %%
+results = []
+
 n = 50
-for dois_sub in [dois[i:i+n] for i in range(0, len(dois), n)]:
+for dois_sub in dois_batches:
     dois_filter = f"doi:{'|'.join(dois_sub)}"
     params = {'filter': dois_filter}
     results = results + get_works(params)
