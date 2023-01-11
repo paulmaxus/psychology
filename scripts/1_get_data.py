@@ -23,27 +23,18 @@
 # %%
 import pandas as pd
 import requests
-import json
+import json, os, glob
 
 # %%
 with open('../config.json', 'r') as f:
     config = json.loads(f.read())
 
 # %%
-pure = pd.read_csv('../data/pure_outputs/research_output.csv')
+pure = pd.read_csv('../data/pure_outputs/pure.csv')
 # some have NULL as NA, but those are recognised by default (na_values)
 
 # %%
-pure = pure.melt(var_name='institute', value_name='doi')
-
-# %%
-# doi preprocessing
-pure = pure.dropna()
-pure['doi'] = pure['doi'].dropna().apply(lambda x: x.replace('https://doi.org/', '').lower().strip())
-# instances have been spotted where the doi is prefixed with the string "doi:"
-# this works as a link, but openalex recognises it as the doi filter parameter
-pure['doi'] = pure['doi'].apply(lambda x: x.replace('doi:', ''))
-pure = pure.drop_duplicates()
+#pure = pure.melt(var_name='institute', value_name='doi')
 
 # %%
 for i in pure.institute.unique():
@@ -57,11 +48,15 @@ dois = pure.doi.unique()
 print(len(dois))
 
 # %%
-pure.to_csv(config['project_path'] + '/tables/institute_has_doi.csv', index=False)
+pure[['institute', 'doi']].to_csv(config['project_path'] + '/tables/institute_has_doi.csv', index=False)
 
 # %% [markdown]
 # ## Scival data (manual)
 # * do this in batches of 5000, those can be computed right away
+
+# %%
+for f in glob.glob('../data/pure_outputs/dois/*.csv'):
+    os.remove(f)
 
 # %%
 for i in range(0, len(dois), 5000):

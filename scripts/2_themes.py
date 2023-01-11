@@ -28,6 +28,11 @@ with open('../config.json', 'r') as f:
     config = json.loads(f.read())
 
 # %%
+# themes
+themes = pd.read_csv('../themes.csv', header=None)
+themes
+
+# %%
 h = pd.read_csv(f'{config["project_path"]}/openalex_concepts_hierarchy.csv')
 h['display_name'] = h.display_name.str.lower()
 
@@ -69,23 +74,38 @@ def is_theme5(concepts: list[tuple[str, int]]) -> bool:
 
 
 # %%
-with open('../data/pure_concepts.json', 'r') as f:
+#with open('../data/pure_concepts.json', 'r') as f:
+#    pubs = json.loads(f.read())
+with open('../data/raw/works.json', 'r') as f:
     pubs = json.loads(f.read())
 
 # %%
+'''
 pubs_themes = []
 for pub in pubs:
     concepts = [(c['display_name'].lower(), c['level']) for c in pub['concepts']]
-    record = {'title': pub['title'], 'year': pub['year'], 'concepts': concepts}
+    record = {'title': pub['title'], 'year': pub['publication_year'], 'concepts': concepts}
     record['theme1'] = is_theme1(concepts)
     record['theme2'] = is_theme2(concepts)
     record['theme3'] = is_theme3(concepts)
     record['theme4'] = is_theme4(concepts)
     record['theme5'] = is_theme5(concepts)
     pubs_themes.append(record)
+'''
+pubs_themes = []
+for pub in pubs:
+    concepts = [(c['display_name'].lower(), c['level']) for c in pub['concepts']]
+    record = {'doi': pub['doi']}
+    is_theme = [is_theme1(concepts), is_theme2(concepts), is_theme3(concepts), is_theme4(concepts), is_theme5(concepts)]
+    record['themes'] = '; '.join(themes[is_theme][0].values)
+    pubs_themes.append(record)
 
 # %%
-pd.DataFrame(pubs_themes).drop(columns='concepts').to_csv(f'{config["project_path"]}/tables/pure_themes.csv', index=False)
+#pd.DataFrame(pubs_themes).drop(columns='concepts').to_csv(f'{config["project_path"]}/tables/pure_themes.csv', index=False)
+pd.DataFrame(pubs_themes).to_csv(f'../data/raw/works_themes.csv', index=False)
+
+# %% [markdown]
+# Extra processing
 
 # %%
 # long format
